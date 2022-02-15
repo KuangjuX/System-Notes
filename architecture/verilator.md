@@ -152,5 +152,48 @@ $ make -C obj_dir -f Valu.mk Valu
 
 ## Basics of Systemverilog verification using C++
 
+### Randomized initial values
 
+Verilator 是一个两阶段的仿真器，这意味着它仅仅支持逻辑信号 0 和 1，不支持逻辑信号 `X`，对 `Z` 信号也仅仅是有限的支持。因此 Verilator 初始化所有的信号为 0。幸运的是，我们可以改变这种行为通过命令行参数，我们可以要求 Verilator 初始化所有的值为 1 或者其他随机数，这将帮助我们检查我们重置信号是否工作了。
 
+为了帮助我们的测试用例初始化为随机数，我们需要调用 `Verilated::commandArgs(argc, argv);` 在创建 `DUT` 对象前。
+
+```c++
+int main(int argc, char** argv, char** env) {
+    Verilated::commandArgs(argc, argv);
+    Valu *dut = new Valu;
+<...>
+```
+
+之后我们还需要添加我们的编译选项 `--x-assign unique` 和 `--x-initial unique`，结果如下：
+
+```c++
+verilator -Wall --trace --x-assign unique --x-initial unique -cc $(MODULE).sv --exe tb_$(MODULE).cpp
+```
+
+最终，我们需要通过添加 `+verilator+rand+reset+2` 在执行我们的仿真可执行文件时：
+
+```shell
+@./obj_dir/V$(MODULE) +verilator+rand+reset+2
+```
+
+### DUT Reset
+
+在我们的测试用例中，我们可以添加：
+
+```c++
+    dut->rst = 0;
+    if(sim_time > 1 && sim_time < 5){
+        dut->rst = 1;
+        dut->a_in = 0;
+        dut->b_in = 0;
+        dut->op_in = 0;
+        dut->in_valid = 0;
+    }
+```
+
+来进行信号的重新设置。
+
+### Basic Verification
+
+在我们的测试程序中，我们可以使用 `Verilated::gotFinished()` 来停止仿真（相当于 `$finish()`）。
