@@ -68,6 +68,16 @@ set_cr3 (guest_page_table):
 
 - 当 guest OS 切换到 guest app 的时候，VMM 将也会切换影子页表
 
+## 影子页表的优势和劣势
 
+**优势：**
 
+- 当建立影子页表时，内存访问非常快
 
+**劣势：**
+
+- 需要在 guest PTs 和 shadow PTs 质检维护一致性，这会触发 VMM traps，可能消耗会很大
+
+- 每次在切换页表时都要进行 TLB flush
+
+- 内存空间需要维护 `pmap`
