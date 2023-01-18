@@ -1,6 +1,8 @@
-# Shadow Page Table
+# Virtualizing Memory
 
-## 启动 Shadow Page Table
+## Software-based memory
+
+### 启动 Shadow Page Table
 
 1. VMM 检测到 guest OS 设置虚拟 CR3
 
@@ -22,7 +24,7 @@ set_cr3 (guest_page_table):
  CR3 = PHYSICAL_ADDR(shadow_page_table)
 ```
 
-## 当 Guest OS 修改页表时
+### 当 Guest OS 修改页表时
 
 **1. 不应该允许直接发生：**
 
@@ -38,7 +40,7 @@ set_cr3 (guest_page_table):
 
 - VMM 将会通过更新影子页表来处理页错误
 
-## 处理页错误
+### 处理页错误
 
 当页错误发生时，陷入 VMM 中
 
@@ -60,7 +62,7 @@ set_cr3 (guest_page_table):
 
 - VMM 从原始页错误中返回
 
-## 如果 Guest App 访问 Kernel 内存怎么办？
+### 如果 Guest App 访问 Kernel 内存怎么办？
 
 **一个解决方案：把一个影子页表分成两个表：**
 
@@ -68,7 +70,7 @@ set_cr3 (guest_page_table):
 
 - 当 guest OS 切换到 guest app 的时候，VMM 将也会切换影子页表
 
-## 影子页表的优势和劣势
+### 影子页表的优势和劣势
 
 **优势：**
 
@@ -81,3 +83,7 @@ set_cr3 (guest_page_table):
 - 每次在切换页表时都要进行 TLB flush
 
 - 内存空间需要维护 `pmap`
+
+## Hardware-assisted memory virtualization
+
+## Memory management
