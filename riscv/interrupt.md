@@ -36,6 +36,20 @@
 
 - mtimecmp: 内存映射的 M mode timer compare register，当 `mtimecmp` 的值比 `mtime` 的值更大或者相等时来处罚一个时钟中断，每个 CPU 都有一个 `mtimecmp` 寄存器。
 
+## PLIC(Platform Level Interrupt Controller)
+
+PLIC 被用于管理所有全局中断并且将它们路由到一个或者多个 CPU core。对于 PLIC 来说它可能转发单个中断源到多个 CPU。在进入 PLIC 处理函数后，CPU 将会读 claim 寄存器获取中断 ID。一次成功的 claim 将会自动清除在 PLIC 中断 pending 寄存器中的 pending 位，向系统表示这个中断已经被服务。如果必要的话，在 PLIC 中断处理进程中在中断源中的 pending flag 应该也被清理。对于 CPU 来说尝试去 claim 一个中断甚至当 pending bit 没有被设置的时候也是合法的。这可能发生，举个例子来说，当一个全局的中断被路由到多个 CPU，并且一个 CPU 已经在另一个 CPU 尝试 claim 之前 claim 了这个中断。在使用 `mret/sret/uret` 指令退出 PLIC 处理函数之前，claim/complete 寄存器被写回处理程序入口获得的非零 claim/complete 值。
+
+### PLIC IDs, Priorities and Preemption
+
+#### PLIC Thresholds
+
+每个 CPU 都有一个 threshold 寄存器，这允许 PLIC 配置当中断优先级小于某个确定级别的时候会被进制。举例来说，如果 threshold 寄存器是 5 的话，表明中断优先级从 1 - 5 的中断都将不被允许。
+
+#### PLIC Connectivity
+
+根据本地终端选择，通过 PLIC 路由的全局中断以略微不同的方式连接到 CPU。如果 PLIC 与 CLINT 一起使用，则从 PLIC 路由的外部中断连接直接绑定到 C{U。如果 PLIC 与 CLIC 一起使用，则不使用外部中断连接，中断从 CLIC 接口进行路由。
+
 ## Reference
 
 - [SiFive Interrupt Cookbook](https://starfivetech.com/uploads/sifive-interrupt-cookbook-v1p2.pdf)
