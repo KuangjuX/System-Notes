@@ -40,6 +40,40 @@
 
 PLIC 被用于管理所有全局中断并且将它们路由到一个或者多个 CPU core。对于 PLIC 来说它可能转发单个中断源到多个 CPU。在进入 PLIC 处理函数后，CPU 将会读 claim 寄存器获取中断 ID。一次成功的 claim 将会自动清除在 PLIC 中断 pending 寄存器中的 pending 位，向系统表示这个中断已经被服务。如果必要的话，在 PLIC 中断处理进程中在中断源中的 pending flag 应该也被清理。对于 CPU 来说尝试去 claim 一个中断甚至当 pending bit 没有被设置的时候也是合法的。这可能发生，举个例子来说，当一个全局的中断被路由到多个 CPU，并且一个 CPU 已经在另一个 CPU 尝试 claim 之前 claim 了这个中断。在使用 `mret/sret/uret` 指令退出 PLIC 处理函数之前，claim/complete 寄存器被写回处理程序入口获得的非零 claim/complete 值。
 
+### Interrupt Flow
+
+- 全局中断从源送到中断网关
+
+- 中断网关然后向 PLIC core 发送单个中断请求，PLIC 将这些锁存在 peding bits(IP) 中。
+
+- 如果这些目标开启了中断并且该中断优先级超过了 threshold（阈值），PLIC core 将会把中断标志转发给一个或者多个目标。
+
+- 当目标接受外部中断的时候，他会送一个中断声明(**claim**)请求去取得 PLIC core 为该目标锁存的最高优先级的全局中断标识符。
+
+- PLIC core 清除相应的中断源等待位。
+
+- 在目标处理完中断后，它向合适的中断网关发送中断完成消息。
+
+- 中断网关现在可以转发相同源的中断请求向 PLIC core。
+
+![](image/irq-flow.jpg)
+
+### RISC -V PLIC Operation Parameters
+
+- Interrupt Priorities registers
+
+- Interrupt Pending Bits registers
+
+- Interrupt Enables registers
+
+- Interrupt Thresholds registers
+
+- Interrupt Claim registers
+
+- Interrupt Completion registers
+
+![](image/PLIC.jpg)
+
 ### PLIC IDs, Priorities and Preemption
 
 #### PLIC Thresholds
