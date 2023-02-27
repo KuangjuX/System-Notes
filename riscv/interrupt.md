@@ -74,16 +74,122 @@ PLIC 被用于管理所有全局中断并且将它们路由到一个或者多个
 
 ![](image/PLIC.jpg)
 
-### PLIC IDs, Priorities and Preemption
+### Interrupt Priorities
 
-#### PLIC Thresholds
+中断优先级是无符号整数，支持的最大优先级与平台相关。中断优先级为 0 意味着从不中断。数值越大中断优先级越高。每一个全局中断源在MMIO 寄存器中有相关联的中断优先级寄存器。不同的中断源不需要支持同一组优先级数值。一个有效的实现可以硬连接所有输入优先级。 中断源优先级寄存器应该是 WARL 字段，以允许软件确定每个优先级规范（如果有）中读写位的数量和位置。
 
-每个 CPU 都有一个 threshold 寄存器，这允许 PLIC 配置当中断优先级小于某个确定级别的时候会被进制。举例来说，如果 threshold 寄存器是 5 的话，表明中断优先级从 1 - 5 的中断都将不被允许。
+中断优先级是和 `priority` 优先级相关联的，中断优先级为 0 意味着从不中断，数值越高中断优先级越高；相同中断优先级情况下，最低的 Interrupt ID 有最高的优先级。
 
-#### PLIC Connectivity
+**PLIC Interrupt Priority Memory Map:**
 
-根据本地终端选择，通过 PLIC 路由的全局中断以略微不同的方式连接到 CPU。如果 PLIC 与 CLINT 一起使用，则从 PLIC 路由的外部中断连接直接绑定到 C{U。如果 PLIC 与 CLIC 一起使用，则不使用外部中断连接，中断从 CLIC 接口进行路由。
+```
+0x000000: Reserved (interrupt source 0 does not exist)
+0x000004: Interrupt source 1 priority
+0x000008: Interrupt source 2 priority
+...
+0x000FFC: Interrupt source 1023 priority
+```
+
+### Interrupt Pending Bits
+
+当前中断源在 PLIC core 中的 pending bits 可以从 pending 数组中读取，它的组织方式是使用 32 位寄存器。中断 ID 为 N 的 peding bit是存储在 (N/32) 字的 (N mod 32) bit 上。字 0 的 bit 0，代表不存在中断源为0，会被硬布线为0。
+
+**PLIC Interrupt Pending Bits Memory Map:**
+
+```
+0x001000: Interrupt Source #0 to #31 Pending Bits
+...
+0x00107C: Interrupt Source #992 to #1023 Pending Bits
+```
+
+### Interrupt Enables
+
+每个全局中断可以通过 `enables` 寄存器中合适的 bit 来进行开启。`enable` 寄存器是是 32 bit 的内存连续的数组，组织方式和 `pending` 相同。`enable` 寄存器的 0 word 0 bit 被硬编码为0，表示不存在。PLIC 有 15872 个中断使能控制块。
+
+**PLIC Interrupt Enable Bits Memory Map:**
+
+```
+0x002000: Interrupt Source #0 to #31 Enable Bits on context 0
+...
+0x00207C: Interrupt Source #992 to #1023 Enable Bits on context 0
+0x002080: Interrupt Source #0 to #31 Enable Bits on context 1
+...
+0x0020FC: Interrupt Source #992 to #1023 Enable Bits on context 1
+0x002100: Interrupt Source #0 to #31 Enable Bits on context 2
+...
+0x00217C: Interrupt Source #992 to #1023 Enable Bits on context 2
+0x002180: Interrupt Source #0 to #31 Enable Bits on context 3
+...
+0x0021FC: Interrupt Source #992 to #1023 Enable Bits on context 3
+...
+...
+...
+0x1F1F80: Interrupt Source #0 to #31 on context 15871
+...
+0x1F1FFC: Interrupt Source #992 to #1023 on context 15871
+```
+
+### Priority Threholds
+
+PLIC 提供了基于上下文的 `threshold register` 对于每个上下文的中断优先级。PLIC 将屏蔽所有中断优先级小于或等于 `threshold` 的中断。
+
+**PLIC Interrupt Priority Thresholds Memory Map:**
+
+```
+0x200000: Priority threshold for context 0
+0x201000: Priority threshold for context 1
+0x202000: Priority threshold for context 2
+0x203000: Priority threshold for context 3
+...
+...
+...
+0x3FFF000: Priority threshold for context 15871
+```
+
+### Interrupt Claim Process
+
+在目标受到中断标识之后，它可能决定为中断服务。目标向 PLIC 发送中断声明信息，这通常是通过非幂等的 MMIO read 操作来实现的。在收到声明消息后，PLIC 核将自动决定目标等待的最高优先级的中断并且清除中断源的 IP 位。然后 PLIC 将向目标返回 ID。如果没有等待的中断则返回 0。
+
+在最高优先级的等待中断被声明并且被清除后，其他更低优先级的等待中断可能对目标可见，在 claim 后 PLIC EIP 位可能不会被清除。中断处理函数可以检查 `meip/seip/ueip` 等 bit 在退出处理函数前，这样可以允许对于其他中断进行处理而不需要进行额外的上下文切换。
+
+即使 EIP 没有被设置，PLIC 执行 claim 仍然是合法的，通过读 `claim/complete` 寄存器，将返回最高优先级等待的中断 ID 或者是 0（表示没有等待的中断）。一次成功的 claim 操作将自动清除中断源上的合适的等待位。PLIC 可以在任何时候执行 claim 并且 claim 操作是不会被 `threshold` 寄存器的设置所影响的。
+
+**PLIC Interrupt Claim Process Memory Map:**
+
+```
+0x200004: Interrupt Claim Process for context 0
+0x201004: Interrupt Claim Process for context 1
+0x202004: Interrupt Claim Process for context 2
+0x203004: Interrupt Claim Process for context 3
+...
+...
+...
+0x3FFF004: Interrupt Claim Process for context 15871
+```
+
+### Interrupt Completion
+
+中断处理函数可以通过将从 claim 过程中收到的中断 ID 写入`claim/complete` 寄存器来向 PLIC 标志中断处理已经完成。PLIC 不会检查是否 completion ID 和上次 claim 的 ID 是否相同。如果 completation ID 不和任何一个中断源所匹配的话会被自动忽略。
+
+在处理函数完成了一系列中断处理服务后，相关联的网关必须发送一个中断 completion 消息，总会写入非幂等 MMIO 寄存器中。网关将仅仅转发添加的中断在 PLIC core 收到 completion 消息后。
+
+**PLIC Interrupt Completion Memory Map:**
+
+```
+0x200004: Interrupt Completion for context 0
+0x201004: Interrupt Completion for context 1
+0x202004: Interrupt Completion for context 2
+0x203004: Interrupt Completion for context 3
+...
+...
+...
+0x3FFF004: Interrupt Completion for context 15871
+```
+
+
 
 ## Reference
+
+- [riscv-plic-spec/riscv-plic-1.0.0_rc6.pdf at master · riscv/riscv-plic-spec · GitHub](https://github.com/riscv/riscv-plic-spec/blob/master/riscv-plic-1.0.0_rc6.pdf)
 
 - [SiFive Interrupt Cookbook](https://starfivetech.com/uploads/sifive-interrupt-cookbook-v1p2.pdf)
