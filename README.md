@@ -13,3 +13,11 @@
 - [内存虚拟化](vmm/mm-virtualizing.md)
 
 - [IO 虚拟化](vmm/io-virtualizing.md)
+
+- [KVM/QEMU](vmm/qemu-kvm.md)
+
+## OS
+
+- [多核与多处理器](os/multicore.md)
+
+- 
