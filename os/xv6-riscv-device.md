@@ -17,4 +17,3 @@ xv6 shell通过 `init` (user/init.c:19)打开的文件描述符从控制台读�
 `uartintr`(kernel/uart.c:180) 从 `UART` 硬件中读取在等待的输入字符，并将它们交给 `consoleintr`  (kernel/console.c:138)；它不会等待输入字符，因为以后的输入会引发一个新的中断。 `consoleintr` 的工作是将中输入字符积累 `cons.buf` 中，直到有一行字符。 `consoleintr` 会特别处理退格键和其他一些字符。当一个新行到达时，`consoleintr` 会唤醒一个等待的 `consoleread`（如果有的话）。
 
 一旦被唤醒，`consoleread` 将会注意到 `cons.buf` 中的完整行，并将其将其复制到用户空间，并返回（通过系统调用）到用户空间。
-

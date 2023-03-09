@@ -21,7 +21,7 @@ KPTI (Kernel Page Table Isolation) 机制最初的主要目的是为了缓解 KA
 
 ```assembly
 uservec:    
-	#
+    #
         # trap.c sets stvec to point here, so
         # traps from user space start here,
         # in supervisor mode, but with a
@@ -30,8 +30,8 @@ uservec:
         # sscratch points to where the process's p->trapframe is
         # mapped into user space, at TRAPFRAME.
         #
-        
-	# swap a0 and sscratch
+
+    # swap a0 and sscratch
         # so that a0 is TRAPFRAME
         csrrw a0, sscratch, a0
 
@@ -67,7 +67,7 @@ uservec:
         sd t5, 272(a0)
         sd t6, 280(a0)
 
-	# save the user a0 in p->trapframe->a0
+    # save the user a0 in p->trapframe->a0
         csrr t0, sscratch
         sd t0, 112(a0)
 
@@ -152,7 +152,7 @@ copyin(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
 
 可以看到，为了访问用户态数据，我们需要首先将用户态的虚拟地址经过用户态页表进行地址翻译转成物理地址，之后再通过物理地址直接访问用户态数据即可，那么由于在内核中的数据段是进行 1 : 1 映射的，因此内存访问在经过 MMU 地址翻译的时候不会出错，关于内核地址映射定义在 `kernel/vm.c` 的 `kvmmake` 函数中：
 
-```c 
+```c
 // Make a direct-map page table for the kernel.
 pagetable_t
 kvmmake(void)
@@ -183,7 +183,7 @@ kvmmake(void)
 
   // map kernel stacks
   proc_mapstacks(kpgtbl);
-  
+
   return kpgtbl;
 }
 ```
@@ -192,4 +192,3 @@ kvmmake(void)
 
 - [KPTI WiKi](https://en.wikipedia.org/wiki/Kernel_page-table_isolation)
 - [KPTI CTF-WiKi](https://ctf-wiki.org/pwn/linux/kernel-mode/defense/isolation/user-kernel/kpti/)
-
