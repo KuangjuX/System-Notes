@@ -19,5 +19,3 @@
 ## OS
 
 - [多核与多处理器](os/multicore.md)
-
-- 
