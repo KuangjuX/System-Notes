@@ -14,6 +14,9 @@
   - [RISC -V H 扩展](riscv/RISC-V-H.md)
   - [RISC -V SBI](riscv/sbi.md)
 
+- Rust 
+  - [Rust trait](riscv/trait.md)
+
 - Virtualization
   - [内存虚拟化](vmm/mm-virtualizing.md)
   - [IO 虚拟化](vmm/io-virtualizing.md)
