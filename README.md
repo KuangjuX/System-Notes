@@ -15,7 +15,7 @@
   - [RISC -V SBI](riscv/sbi.md)
 
 - Rust 
-  - [Rust trait](riscv/trait.md)
+  - [Rust trait](Rust/trait.md)
 
 - Virtualization
   - [内存虚拟化](vmm/mm-virtualizing.md)
