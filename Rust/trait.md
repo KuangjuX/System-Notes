@@ -103,5 +103,16 @@ pub trait Iterator {
 `Self` 用来指代当前调用者的具体类型，那么 `Self::Item` 就用来指代该类型实现中定义的 `Item` 类型：
 
 ```rust
+impl Iterator for Counter {
+    type Item = u32;
 
+    fn next(&mut self) -> Option<Self::Item> {
+        // --snip--
+    }
+}
+
+fn main() {
+    let c = Counter{..}
+    c.next()
+}
 ```
