@@ -5,7 +5,6 @@
   - [Instruction Level Parallelism](arch/CAAQA/ILP.md)
 
 - OS
-  
   - xv6-rust
     - [xv6-rust 设计文档](os/xv6-rust/xv6-rust-design.md)
   - [多核与多处理器](os/multicore.md)
@@ -14,13 +13,14 @@
   - [IO uring 机制](os/io_uring.md)
 
 - RISC -V
-  
   - [关于 RISC -V 中断](riscv/interrupt.md)
   - [RISC -V H 扩展](riscv/RISC-V-H.md)
   - [RISC -V SBI](riscv/sbi.md)
 
+- Rust 
+  - [Rust trait](Rust/trait.md)
+
 - Virtualization
-  
   - [内存虚拟化](vmm/mm-virtualizing.md)
   - [IO 虚拟化](vmm/io-virtualizing.md)
   - [KVM/QEMU](vmm/qemu-kvm.md)
