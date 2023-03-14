@@ -1,6 +1,7 @@
 # Lazy Page Allocation
 
 在本次实验中我们需要实现内存页懒加载机制，也就是当用户向内核申请内存的时候，内核不需要实际分配内存，而只是增长当前进程的 `size`，也就是说我们需要修改 `sys_sbrk()` 系统调用：
+
 ```c
 // 懒加载，在这里仅仅改变进程记录的内存大小的值
 // 而并不实际分配
@@ -24,9 +25,10 @@ sys_sbrk(void)
   }
   return addr;
 }
-```  
-  
+```
+
 由于我们并没有实际向进程分配内存，因此当进程访问未分配的内存时会发生也错误，我们需要在 `usertrap` 中拿到页错误的地址并分配内存地址并进行映射:
+
 ```c
 void
 usertrap(void)
@@ -41,10 +43,10 @@ usertrap(void)
   w_stvec((uint64)kernelvec);
 
   struct proc *p = myproc();
-  
+
   // save user program counter.
   p->tf->epc = r_sepc();
-  
+
   uint64 scause = r_scause();
   if(scause == 8){
     // system call
@@ -68,7 +70,7 @@ usertrap(void)
       // 如果读取的是用户栈下的保护页则不需要进行分配
       uint64 err_addr = PGROUNDDOWN(r_stval());
       uint64 new_addr = err_addr + PGSIZE;
-      
+
       if(err_addr > p->sz || new_addr >= MAXVA || err_addr <= p->tf->sp) {
         p->killed = 1;
       }else{
@@ -109,11 +111,12 @@ usertrap(void)
 
   usertrapret();
 }
-```  
-  
+```
+
 这里注意，我们对于发生错误的地址有一定的限制要求，首先发生错误的地址不能超过使用 `proc->size`，否则就是访问了不允许的地址，其次错误地址不可以超过系统最大虚拟地址 `MAXVA`，最后不允许访问用户栈下面的 `guard page`，即不能为其分配地址，而是要按正常的异常的处理走，否则会触发难以想象的后果。
-  
+
 除此之外，当我们调用 `fork` 系统调用的时候，系统会遍历该进程所有的地址并进行分配映射，然后有些地址实际上是并没有被分配的，对于这部分地址我们选择忽略而并非 `panic`，我们修改 `uvmcopy` 如下：
+
 ```c
 int
 uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
@@ -146,9 +149,10 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
   uvmunmap(new, 0, i, 1);
   return -1;
 }
-```  
-  
+```
+
 当系统调用 `sys_read` 或者 `sys_write` 来进行读写文件时涉及到内存的拷贝，因此当我们处理到文件内存拷贝时遇到为被分配的页时需要重新分配映射后再进行拷贝，例如我们修改 `writei` 如下所示：
+
 ```c
 int
 writei(struct inode *ip, int user_src, uint64 src, uint off, uint n)

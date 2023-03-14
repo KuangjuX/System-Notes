@@ -208,19 +208,19 @@ verilator -Wall --trace --x-assign unique --x-initial unique -cc $(MODULE).sv --
 #include "verilated.h"
 
 int main(int argc, char **argv) {
-	// Initialize Verilators variables
-	Verilated::commandArgs(argc, argv);
+    // Initialize Verilators variables
+    Verilated::commandArgs(argc, argv);
 
-	// Create an instance of our module under test
-	Vmodule *tb = new Vmodule;
+    // Create an instance of our module under test
+    Vmodule *tb = new Vmodule;
 
-	// Tick the clock until we are done
-	while(!Verilated::gotFinish()) {
-		tb->i_clk = 1;
-		tb->eval();
-		tb->i_clk = 0;
-		tb->eval();
-	} exit(EXIT_SUCCESS);
+    // Tick the clock until we are done
+    while(!Verilated::gotFinish()) {
+        tb->i_clk = 1;
+        tb->eval();
+        tb->i_clk = 0;
+        tb->eval();
+    } exit(EXIT_SUCCESS);
 }
 ```
 
@@ -229,49 +229,49 @@ int main(int argc, char **argv) {
 现在我们尝试根据这个功能使用一个 `TESRBENCH` 类来包裹所需的功能:
 
 ```c++
-template<class MODULE>	class TESTBENCH {
-	unsigned long	m_tickcount;
-	MODULE	*m_core;
+template<class MODULE>    class TESTBENCH {
+    unsigned long    m_tickcount;
+    MODULE    *m_core;
 
-	TESTBENCH(void) {
-		m_core = new MODULE;
-		m_tickcount = 0l;
-	}
+    TESTBENCH(void) {
+        m_core = new MODULE;
+        m_tickcount = 0l;
+    }
 
-	virtual ~TESTBENCH(void) {
-		delete m_core;
-		m_core = NULL;
-	}
+    virtual ~TESTBENCH(void) {
+        delete m_core;
+        m_core = NULL;
+    }
 
-	virtual void	reset(void) {
-		m_core->i_reset = 1;
-		// Make sure any inheritance gets applied
-		this->tick();
-		m_core->i_reset = 0;
-	}
+    virtual void    reset(void) {
+        m_core->i_reset = 1;
+        // Make sure any inheritance gets applied
+        this->tick();
+        m_core->i_reset = 0;
+    }
 
-	virtual void	tick(void) {
-		// Increment our own internal time reference
-		m_tickcount++;
+    virtual void    tick(void) {
+        // Increment our own internal time reference
+        m_tickcount++;
 
-		// Make sure any combinatorial logic depending upon
-		// inputs that may have changed before we called tick()
-		// has settled before the rising edge of the clock.
-		m_core->i_clk = 0;
-		m_core->eval();
+        // Make sure any combinatorial logic depending upon
+        // inputs that may have changed before we called tick()
+        // has settled before the rising edge of the clock.
+        m_core->i_clk = 0;
+        m_core->eval();
 
-		// Toggle the clock
+        // Toggle the clock
 
-		// Rising edge
-		m_core->i_clk = 1;
-		m_core->eval();
+        // Rising edge
+        m_core->i_clk = 1;
+        m_core->eval();
 
-		// Falling edge
-		m_core->i_clk = 0;
-		m_core->eval();
-	}
+        // Falling edge
+        m_core->i_clk = 0;
+        m_core->eval();
+    }
 
-	virtual bool	done(void) { return (Verilated::gotFinish()); }
+    virtual bool    done(void) { return (Verilated::gotFinish()); }
 }
 ```
 
@@ -283,70 +283,70 @@ template<class MODULE>	class TESTBENCH {
 #include "testbench.h"
 
 int main(int argc, char **argv) {
-	Verilated::commandArgs(argc, argv);
-	TESTBENCH<Vmodule> *tb = new TESTBENCH<Vmodule>();
+    Verilated::commandArgs(argc, argv);
+    TESTBENCH<Vmodule> *tb = new TESTBENCH<Vmodule>();
 
-	while(!tb->done()) {
-		tb->tick();
-	} exit(EXIT_SUCCESS);
+    while(!tb->done()) {
+        tb->tick();
+    } exit(EXIT_SUCCESS);
 }
 ```
 
 在测试的时候我们也可以 `printf()` 一些关键的信号帮助我们调试：
 
 ```c++
-class	MODULE_TB : public TESTBENCH<Vmodule> {
+class    MODULE_TB : public TESTBENCH<Vmodule> {
 
-	virtual void	tick(void) {
-		// Request that the testbench toggle the clock within
-		// Verilator
-		TESTBENCH<Vmodule>::tick();
+    virtual void    tick(void) {
+        // Request that the testbench toggle the clock within
+        // Verilator
+        TESTBENCH<Vmodule>::tick();
 
-		// Now we'll debug by printf's and examine the
-		// internals of m_core
-		printf("%8ld: %s %s ...\n", m_tickcount,
-			(m_core->v__DOT__wb_cyc)?"CYC":"   ",
-			(m_core->v__DOT__wb_stb)?"STB":"   ",
-			... );
-	}
+        // Now we'll debug by printf's and examine the
+        // internals of m_core
+        printf("%8ld: %s %s ...\n", m_tickcount,
+            (m_core->v__DOT__wb_cyc)?"CYC":"   ",
+            (m_core->v__DOT__wb_stb)?"STB":"   ",
+            ... );
+    }
 }
 ```
 
 除此之外我们也可以添加一些信号的判断来帮助我们决定是否进行输出一些信息：
 
 ```c++
-class	MODULE_TB : public TESTBENCH<Vmodule> {
+class    MODULE_TB : public TESTBENCH<Vmodule> {
 
-	virtual void	tick(void) {
-		// Request that the testbench toggle the clock within
-		// Verilator
-		TESTBENCH<Vmodule>::tick();
+    virtual void    tick(void) {
+        // Request that the testbench toggle the clock within
+        // Verilator
+        TESTBENCH<Vmodule>::tick();
 
-		bool	writeout = false;
-		// Check for debugging conditions
-		//
-		// For example:
-		//
-		//   1. We might be interested any time a wishbone master
-		//	command is accepted
-		//
-		if ((m_core->v__DOT__wb_stb)&&(!m_core->v__DOT__wb_stall))
-			writeout = true;
-		//
-		//   2. as well as when the slave finally responds
-		//
-		if (m_core->v__DOT__wb_ack)
-			writeout = true;
+        bool    writeout = false;
+        // Check for debugging conditions
+        //
+        // For example:
+        //
+        //   1. We might be interested any time a wishbone master
+        //    command is accepted
+        //
+        if ((m_core->v__DOT__wb_stb)&&(!m_core->v__DOT__wb_stall))
+            writeout = true;
+        //
+        //   2. as well as when the slave finally responds
+        //
+        if (m_core->v__DOT__wb_ack)
+            writeout = true;
 
-		if (writeout) {
-			// Now we'll debug by printf's and examine the
-			// internals of m_core
-			printf("%8ld: %s %s ...\n", m_tickcount,
-				(m_core->v__DOT__wb_cyc)?"CYC":"   ",
-				(m_core->v__DOT__wb_stb)?"STB":"   ",
-				... );
-		}
-	}
+        if (writeout) {
+            // Now we'll debug by printf's and examine the
+            // internals of m_core
+            printf("%8ld: %s %s ...\n", m_tickcount,
+                (m_core->v__DOT__wb_cyc)?"CYC":"   ",
+                (m_core->v__DOT__wb_stb)?"STB":"   ",
+                ... );
+        }
+    }
 }
 ```
 
@@ -356,83 +356,80 @@ class	MODULE_TB : public TESTBENCH<Vmodule> {
 #include <verilated_vcd_c.h>
 
 template<class MODULE> class TESTBENCH {
-	// Need to add a new class variable
-	VerilatedVcdC	*m_trace;
-	...
+    // Need to add a new class variable
+    VerilatedVcdC    *m_trace;
+    ...
 
-	TESTBENCH(void) {
-		// According to the Verilator spec, you *must* call
-		// traceEverOn before calling any of the tracing functions
-		// within Verilator.
-		Verilated::traceEverOn(true);
-		... // Everything else can stay like it was before
-	}
+    TESTBENCH(void) {
+        // According to the Verilator spec, you *must* call
+        // traceEverOn before calling any of the tracing functions
+        // within Verilator.
+        Verilated::traceEverOn(true);
+        ... // Everything else can stay like it was before
+    }
 
-	// Open/create a trace file
-	virtual	void	opentrace(const char *vcdname) {
-		if (!m_trace) {
-			m_trace = new VerilatedVcdC;
-			m_core->trace(m_trace, 99);
-			m_trace->open(vcdname);
-		}
-	}
+    // Open/create a trace file
+    virtual    void    opentrace(const char *vcdname) {
+        if (!m_trace) {
+            m_trace = new VerilatedVcdC;
+            m_core->trace(m_trace, 99);
+            m_trace->open(vcdname);
+        }
+    }
 
-	// Close a trace file
-	virtual void	close(void) {
-		if (m_trace) {
-			m_trace->close();
-			m_trace = NULL;
-		}
-	}
+    // Close a trace file
+    virtual void    close(void) {
+        if (m_trace) {
+            m_trace->close();
+            m_trace = NULL;
+        }
+    }
 
-	virtual void	tick(void) {
-		// Make sure the tickcount is greater than zero before
-		// we do this
-		m_tickcount++;
+    virtual void    tick(void) {
+        // Make sure the tickcount is greater than zero before
+        // we do this
+        m_tickcount++;
 
-		// Allow any combinatorial logic to settle before we tick
-		// the clock.  This becomes necessary in the case where
-		// we may have modified or adjusted the inputs prior to
-		// coming into here, since we need all combinatorial logic
-		// to be settled before we call for a clock tick.
-		//
-		m_core->i_clk = 0;
-		m_core->eval();
+        // Allow any combinatorial logic to settle before we tick
+        // the clock.  This becomes necessary in the case where
+        // we may have modified or adjusted the inputs prior to
+        // coming into here, since we need all combinatorial logic
+        // to be settled before we call for a clock tick.
+        //
+        m_core->i_clk = 0;
+        m_core->eval();
 
-		//
-		// Here's the new item:
-		//
-		//	Dump values to our trace file
-		//
-		if(trace) m_trace->dump(10*m_tickcount-2);
+        //
+        // Here's the new item:
+        //
+        //    Dump values to our trace file
+        //
+        if(trace) m_trace->dump(10*m_tickcount-2);
 
-		// Repeat for the positive edge of the clock
-		m_core->i_clk = 1;
-		m_core->eval();
-		if(trace) m_trace->dump(10*m_tickcount);
+        // Repeat for the positive edge of the clock
+        m_core->i_clk = 1;
+        m_core->eval();
+        if(trace) m_trace->dump(10*m_tickcount);
 
-		// Now the negative edge
-		m_core->i_clk = 0;
-		m_core->eval();
-		if (m_trace) {
-			// This portion, though, is a touch different.
-			// After dumping our values as they exist on the
-			// negative clock edge ...
-			m_trace->dump(10*m_tickcount+5);
-			//
-			// We'll also need to make sure we flush any I/O to
-			// the trace file, so that we can use the assert()
-			// function between now and the next tick if we want to.
-			m_trace->flush();
-		}
-	}
+        // Now the negative edge
+        m_core->i_clk = 0;
+        m_core->eval();
+        if (m_trace) {
+            // This portion, though, is a touch different.
+            // After dumping our values as they exist on the
+            // negative clock edge ...
+            m_trace->dump(10*m_tickcount+5);
+            //
+            // We'll also need to make sure we flush any I/O to
+            // the trace file, so that we can use the assert()
+            // function between now and the next tick if we want to.
+            m_trace->flush();
+        }
+    }
 }
 ```
-
-
 
 ## References
 
 - [Taking a New Look at Verilator](https://zipcpu.com/blog/2017/06/21/looking-at-verilator.html)
 - [Verilator example sources for Verilog/SystemVerilog verification with C++](https://github.com/n-kremeris/verilator_basics)
-

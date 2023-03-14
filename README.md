@@ -2,6 +2,8 @@
 
 - Arch
   - [Instruction Level Parallelism](arch/CAAQA/ILP.md)
+  - [TLB MMU](arch/TLB%20MMU.md)
+  - [Verilator 使用](arch/verilator.md)
 
 - Courses
   - MIT 6.S081

@@ -1,23 +1,24 @@
-# Networking 
-在本次实验中我们需要自己去实现网卡驱动和网络套接字，在写网卡驱动前我们需要知道网卡收发包的工作原理，再看了文档和查阅了一些资料之后总结了一下。  
-  
+# Networking
+
+在本次实验中我们需要自己去实现网卡驱动和网络套接字，在写网卡驱动前我们需要知道网卡收发包的工作原理，在看了文档和查阅了一些资料之后总结了一下。  
+
 ## 网卡接收与传输
 
 ![](img/ptPxv.png)  
-  
 
 由这张图我们可以梳理下关于网卡收发包的细节，首先内核需要分配 `rx_ring` 和 `tx_ring` 两块环形缓冲区的内存用来接收和发送报文。其中以太网控制器的寄存器记录了关于 `rx_ring` 和 `tx_ring` 的详细信息。接收 packet 的细节如下：
+
 1. 内核首先在主存中分配内存缓冲区和环形缓冲区，并由 CPU 将 `rx_ring` 的详细信息写入以太网控制器
 2. 随后 NIC (Network Interface Card) 通过 DMA 获取到下一个可以写入的缓冲区的地址，当 packet 从硬件收到的时候外设通过 DMA 的方式写入对应的内存地址中
 3. 当写入内存地址后，硬件将会向 CPU 发生中断，操作系统检测到中断后会调用网卡的异常处理函数
 4. 异常处理函数可以通过由以太网控制寄存器映射到操作系统上的内存地址访问寄存器获取到下一个收到但未处理的 packet 的描述符，根据该描述符可以找到对应的缓冲区地址进行读取并传输给上层协议。  
-  
+
 ![](img/HignO.png)  
-    
 
 由这张图可以看出软硬件在接收到 packet 的时候是如何工作的，首先硬件通过 DMA 拿到了 `Head` 所在 `rx_ring` 描述符的内存地址，并获取到其缓冲区地址，然后将收到的 packet 通过 DMA 拷贝到内存中，随后更新 `rx_ring` 描述符的内容并向寄存器中写入 `HEAD` 的新位置，随后向操作系统发出中断，操作系统收到中断通过获取 `Tail` 所在位置的文件描述符的信息来获取下一个将要处理的 packet，处理后由软件而非硬件更新 `Tail` 的位置。  
-  
+
 所以我们可以按照以下逻辑写一下网卡收包与发包的过程：
+
 ```c
 int
 e1000_transmit(struct mbuf *m)
@@ -64,7 +65,7 @@ e1000_recv(void)
   // Check for packets that have arrived from the e1000
   // Create and deliver an mbuf for each packet (using net_rx()).
   //
-  
+
   // 获取接收 packet 的位置
   uint64 rdt = regs[E1000_RDT];
   uint64 index = (rdt + 1) % RX_RING_SIZE; 
@@ -92,9 +93,9 @@ e1000_recv(void)
   }
 
 }
-```  
+```
+
 这里要注意在从网卡接收 pakcet 的时候必须从 `E1000_RDT` 的位置开始遍历并向上层进行分发直到遇到未被使用的位置，因为网卡并非是收到 pakcet 立刻向操作系统发起中断，而是使用 `NAPI` 机制，对 IRQ 做合并以减少中断次数，`NAPI` 机制让 NIC 的 driver 能够注册一个 `poll` 函数，之后 `NAPI` 的子系统可以通过 `poll` 函数从 ring buffer 批量获取数据，最终发起中断。`NAPI` 的处理流程如下所示:  
-  
 
 1. NIC driver 初始化时向 Kernel 注册 `poll` 函数，用于后续从 Ring Buffer 拉取收到的数据
 2. driver 注册开启 NAPI，这个机制默认是关闭的，只有支持 NAPI 的 driver 才会去开启
@@ -104,16 +105,15 @@ e1000_recv(void)
 6. driver 会禁用当前 NIC 的 IRQ，从而能在 `poll` 完所有数据之前不会再有新的 IRQ
 7. 当所有事情做完之后，NAPI subsystem 会被禁用，并且会重新启用 NIC 的 IRQ
 8. 回到第三步  
-  
 
 而本次实验使用的是 qemu 模拟的 e1000 网卡也使用了 `NAPI` 机制。
-  
-## socket 实现  
-  
+
+## socket 实现
+
 在类 Unix 操作系统上面，设备、`pipe` 和 `socket` 都要当做文件来处理，但在操作系统处理的时候需要根据文件描述符来判断是什么类型的文件并对其进行分发给不同的部分进行出来，我们需要实现的就是操作系统对于 `socket` 的处理过程。  
-   
+
 `socket` 的读取过程需要根绝给定的 `socket` 从所有 `sockets` 中找到并读取 `mbuf`，当对应的 `socket` 的缓冲区为空的时候则需要进行 `sleep` 从而将 CPU 时间让给调度器，当对应的 `socket` 收到了 packet 的时候再唤醒对应的进程:  
-  
+
 ```c
 sockrecvudp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport)
 {
@@ -176,10 +176,10 @@ int sock_read(struct sock* sock, uint64 addr, int n){
   release(&sock->lock);
   return size;
 }
-```  
-  
+```
+
 而写 `socket` 的过程则更为简单，直接将用户态的数据写入对应的缓冲区并传入下层协议即可：
-  
+
 ```c
 int sock_write(struct sock* sock, uint64 addr, int n){
   acquire(&sock->lock);
@@ -193,10 +193,10 @@ int sock_write(struct sock* sock, uint64 addr, int n){
   release(&sock->lock);
   return n;
 }
-```  
-  
+```
+
 最终要实现关闭 `socket` 的操作，即将对应的 `socket` 从操作系统维护的所有的 `socket` 的链表中删除，并释放其所有缓冲区的空间，最终释放 `socket` 的空间:
-  
+
 ```c
 void sock_close(struct sock* sock){
   struct sock* prev = 0;
@@ -230,10 +230,9 @@ void sock_close(struct sock* sock){
   release(&lock);
   kfree((void*)sock);
 }
-
 ```
 
-
 ## References
+
 - [网卡收包流程简析](https://cclinuxer.github.io/2020/07/%E7%BD%91%E5%8D%A1%E6%94%B6%E5%8C%85%E6%B5%81%E7%A8%8B%E6%B5%85%E6%9E%90/)
 - [What is the relationship of DMA ring buffer and TX/RX ring for a network card?](https://stackoverflow.com/questions/47450231/what-is-the-relationship-of-dma-ring-buffer-and-tx-rx-ring-for-a-network-card)
