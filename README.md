@@ -9,6 +9,9 @@
     - [xv6-riscv Copy On Write](courses/MIT%206.S081/cow.md)
     - [xv6-riscv Network](courses/MIT%206.S081/net.md)
     - [xv6-riscv User Thread](courses/MIT%206.S081/uthread.md)
+  - MIT 6.824
+    - [6.824 MapReduce](courses/MIT%206.824/6-824-MapReduce.md)
+    - [6.824 Raft Leader Election](courses/MIT%206.824/6-824-Lab2A.md)
 
 - OS
   - xv6-rust
