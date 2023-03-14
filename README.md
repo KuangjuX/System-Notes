@@ -1,8 +1,14 @@
 # System Notes
 
 - Arch
-  
   - [Instruction Level Parallelism](arch/CAAQA/ILP.md)
+
+- Courses
+  - MIT 6.S081
+    - [xv6-riscv Lazy Page Allocation](courses/MIT%206.S081/lazy.md)
+    - [xv6-riscv Copy On Write](courses/MIT%206.S081/cow.md)
+    - [xv6-riscv Network](courses/MIT%206.S081/net.md)
+    - [xv6-riscv User Thread](courses/MIT%206.S081/uthread.md)
 
 - OS
   - xv6-rust

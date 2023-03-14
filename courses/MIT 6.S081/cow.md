@@ -1,10 +1,13 @@
 # Copy on Write Fork
 
 ## 思路
-思路相对来说比较简单，`copy on write` 主要实现是效果是在 `fork` 的时候并不要为子进程额外分配物理地址，而是与父进程共享物理地址，并且将物理地址的页表项(即最后一级页表项)设为不可写，这样，如果父进程与子进程如果不被写的话就可以完全正常执行，当设计到写操作时，硬件的 MMU 将会检测到页表项不可写，此时会产生 `Page Fault` 异常，而操作系统在异常处理中需要重新分配私有的物理页，并将原有的物理页拷贝到私有物理页并进行重新映射，并将页表项重新设置为可写即可。而原有的物理页则可能被多个进程所引用，所以由引用计数来决定是否被释放，具体过程见实现部分。
+
+思路相对来说比较简单，`copy on write` 主要实现是效果是在 `fork` 的时候并不要为子进程额外分配物理地址，而是与父进程共享物理地址，并且将物理地址的页表项(即最后一级页表项)设为不可写，这样，如果父进程与子进程如果不被写的话就可以完全正常执行，当涉及到写操作时，硬件的 MMU 将会检测到页表项不可写，此时会产生 `Page Fault` 异常，而操作系统在异常处理中需要重新分配私有的物理页，并将原有的物理页拷贝到私有物理页并进行重新映射，并将页表项重新设置为可写即可。而原有的物理页则可能被多个进程所引用，所以由引用计数来决定是否被释放，具体过程见实现部分。
 
 ## 实现
+
 首先用户进程在执行 `fork` 的时候子进程不需要对父进程物理页面进行实际拷贝，实际修改是在 `uvmcopy` 这个函数里面:
+
 ```c
 int
 uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
@@ -33,11 +36,13 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
         *pte &= ~(PTE_W);
       }
   }
-  
+
   return 0;
 }
 ```
+
 此时当进程想去去写物理页面的时候会直接触发 `Page Fault`, 因此我们需要在 `usertrap` 中进行处理:
+
 ```c
 //
 // handle an interrupt, exception, or system call from user space.
@@ -56,7 +61,7 @@ usertrap(void)
   w_stvec((uint64)kernelvec);
 
   struct proc *p = myproc();
-  
+
   // save user program counter.
   p->tf->epc = r_sepc();
   // printf("[Kernel] usertrap: epc: %p scause: %p, \n", p->tf->epc, r_scause());
@@ -121,9 +126,10 @@ usertrap(void)
 
   usertrapret();
 }
-```  
-  
+```
+
 除此之外，当进程调用 `copyout` 函数将数据从内核态拷贝到用户态时我们也需要检查页表项是否有 `COW` 标志并进行重新分配拷贝页表:
+
 ```c
 // 拷贝的时候需要查看是否有 COW 标志位进而进行页的重新分配
 int
@@ -165,9 +171,10 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
   }
   return 0;
 }
-```  
-  
+```
+
 而对于页面的引用计数我们实现在 `kalloc.c` 中，我们定义了 `pin_page` 和 `unpin_page` 来对页面引用进行修改:
+
 ```c
 void pin_page(uint32 index){
   acquire(&refs_lock);
@@ -180,9 +187,10 @@ void unpin_page(uint32 index){
   page_refs[index]--;
   release(&refs_lock);
 }
-``` 
-  
+```
+
 在我们使用 `kalloc` 和 `kfree` 来分配与释放页面时也需要对引用进行操作:
+
 ```c
 // Free the page of physical memory pointed at by v,
 // which normally should have been returned by a
