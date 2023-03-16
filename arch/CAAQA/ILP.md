@@ -18,9 +18,9 @@ Pipeline CPI = Ideal pipeline CPI + Structural stalls + Data hazard stalls + Con
 
 最简单和最普通的去提升 ILP 的方式是在循环中实现并行，这种类型的并行叫做 `loop level parallesim`，接下来是个简单的例子：
 
-```
+```c
 for(i = 0; i <= 999; i = i+1)
-	x[i] = x[i] + y[i];
+    x[i] = x[i] + y[i];
 ```
 
 指令集并行的技术可以通过在编译器中静态地进行展开或者在在硬件上动态执行。一个实现 `loop level parallesim` 的方法是在向量处理器或者 GPU 上面使用 SIMD。SIMD 通过并行处理少量到中等的数据项来实现数据并行。向量指令通过使用并行处理单元和深流水线来并行处理许多数据项。
@@ -36,10 +36,10 @@ for(i = 0; i <= 999; i = i+1)
 
 ```assembly
 Loop: fld f0,0(x1) //f0=array element
-	  fadd.d f4,f0,f2 //add scalar in f2
-	  fsd f4,0(x1) //store result
-	  addi x1,x1," 8 //decrement pointer 8 bytes
-	  bne x1,x2,Loop //branch x16¼x2
+      fadd.d f4,f0,f2 //add scalar in f2
+      fsd f4,0(x1) //store result
+      addi x1,x1," 8 //decrement pointer 8 bytes
+      bne x1,x2,Loop //branch x16¼x2
 ```
 
 数据依赖的两条指令必须按顺序执行不能同时执行否则会造成流水线互锁(pipeline interlocks)，流水线互锁指的是硬件去探测冒险和暂停直到冒险被清除。在一个没有 pipeline interlock 机制的处理器上只能依靠编译器调度来解决。
@@ -77,10 +77,10 @@ Name Dependences 指的是当两条指令使用同样的寄存器或者内存地
 
 ```
 if p1 {
-	S1;
+    S1;
 };
 if p2 {
-	S2;
+    S2;
 }
 ```
 
@@ -90,9 +90,9 @@ if p2 {
 一个控制依赖的例子：
 
 ```
-	add x2,x3,x4
-	beq x2,x0,L1
-	ld x1,0(x2)
+    add x2,x3,x4
+    beq x2,x0,L1
+    ld x1,0(x2)
 L1:
 ```
 
@@ -185,11 +185,11 @@ fmul.d f6,f10,T
 - Issue: 从 FIFO 指令队列的头部获取下一条指令，以此维护指令的顺序性。如果有一个匹配的 reversation station 是空的，发射该指令和对应的操作数值（如果它们当前在寄存器中）到对应的 reversation station。如果没有空的 reservation station，则表明有结构相关冒险，然后该指令暂停直到 station 或者 buffer 被释放。如果操作数不在寄存器中，则跟踪会产生操作数的功能单元，在这一步进行寄存器重命名。
 
 - Execute: 如果一个或多个操作数尚不可用，则在等待计算公共数据总线时监视它。 当一个操作数变得可用时，它被放置到任何等待它的保留站中。 当所有操作数都可用时，就可以在相应的功能单元执行操作。 通过延迟指令执行直到操作数可用，避免了 RAW 冒险。
-
+  
     注意到可能几个指令在相同时钟周期内同样的功能单元同时准备好。尽管独立的功能单元可能在相同周期执行不同的指令，但是如果在相同的功能单元中有超过一条指令准备好了的话，该单元将从它们中选择一个。对于浮点数保留站，选择可能是任意的。但是对于加载和存储指令，情况则有些复杂。
-
+  
     加载和存储指令需要两步骤执行：当基寄存器可获得时计算地址，然后该地址被放入加载或存储缓冲区中(load or store buffer)。当内存单元可获得时在 load buffer 中的加载指令立刻执行。存储指令存储在 store buffer 中直到值被送入内存单元。加载和存储指令保持程序顺序以防冒险。
-
+  
     为了保持异常行为，在程序顺序中位于指令之前的分支完成之前，不允许任何指令启动执行。Speculation 提供了一种更灵活、更完整的方法来处理异常，因此我们将延迟进行此增强，并在稍后展示 Speculation 如何处理此问题。
 
 - Write result：当结果可获得时，将其写到 CDB 总线中和从那些寄存器或者保留站中等待结果。存储指令缓存在 store buffer 中存储地址可获得并且值已经被存储了，然后将结果写入当内存单元是空闲的时候。
@@ -253,11 +253,11 @@ Tomasolu 算法有两方面的优势：
 
 ```
 Loop: 
-	fld f0,0(x1)
-	fmul.d f4,f0,f2
-	fsd f4,0(x1)
-	addi x1,x1," 8
-	bne x1,x2,Loop // branches if x1 != x2
+    fld f0,0(x1)
+    fmul.d f4,f0,f2
+    fsd f4,0(x1)
+    addi x1,x1," 8
+    bne x1,x2,Loop // branches if x1 != x2
 ```
 
 下图表示不同类型的指令在发射和执行等过程的流程：
@@ -312,4 +312,3 @@ Hardware Speculation 方法除了加上 ROB 并加上了提交阶段其他部分
 - 执行阶段：当对应的操作数可获得时进行之星
 - 写回阶段：将计算结果通过 CDB 广播到所有保留站中，并更新寄存器状态和 ROB。
 - 提交阶段：若队列顶 ROB 已准备好，则将其 pop 出来并写回寄存器。然后释放 ROB。
-

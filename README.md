@@ -15,6 +15,9 @@
     - [6.824 MapReduce](courses/MIT%206.824/6-824-MapReduce.md)
     - [6.824 Raft Leader Election](courses/MIT%206.824/6-824-Lab2A.md)
 
+- Compiler
+  - [编译器寄存器分配](compiler/reg_allocation.md)
+
 - OS
   - xv6-rust
     - [xv6-rust 设计文档](os/xv6-rust/xv6-rust-design.md)
