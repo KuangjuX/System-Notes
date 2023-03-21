@@ -16,3 +16,9 @@ make linux
 将会将交叉编译器安装到 `/opt/riscv64` 目录中
 
 如果需要编译不带浮点支持的，可以在配置的时候加上 `--with-arch=rv64imac --with-abi=lp64`
+
+**Tips:**
+
+- Go to folder /opt/riscv/sysroot/usr/include/gnu/
+
+- cp stubs-lp64d.h stubs-lp64.h
