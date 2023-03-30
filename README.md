@@ -34,6 +34,14 @@
   - [内存管理](os/mm.md)
   - [IO uring 机制](os/io_uring.md)
 
+- Paper Notes
+  
+  - OS
+  
+  - Virtualization
+    
+    - [HyperBench: A Benchmark Suite for Virtualization Capabilities](paper-notes/hypervisor/Hyperbench-A-Benchmark-Suite-for-Virtualization-Capabilities.md)
+
 - RISC -V
   
   - [关于 RISC -V 中断](riscv/interrupt.md)
