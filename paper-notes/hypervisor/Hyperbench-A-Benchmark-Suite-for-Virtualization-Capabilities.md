@@ -54,6 +54,8 @@ IO benchmarks 主要用来测试 host 和 guest  的通信机制。hypervisor �
 
 - Print：这个 benchmark 关注于字符串，将一串字符从内存中输出到对应的 serial IO 中。
 
+![](Hyperbench-A-Benchmark-Suite-for-Virtualization-Capabilities/figure-7.png)
+
 ## IMPLEMENTATION
 
 ![](Hyperbench-A-Benchmark-Suite-for-Virtualization-Capabilities/figure2.png)
@@ -71,16 +73,16 @@ IO benchmarks 主要用来测试 host 和 guest  的通信机制。hypervisor �
 - 可扩展性：HyperBench 的一个重要优势是添加一个新的 benchmarks 是相当容易的。那是由于 POSIH 在内存布局上进行了仔细地设计。当添加一个新的 benchmark 时许多函数可以被重用。**.benchmarks** 段是一个描述所有的 HyperBench benchmarks 所映射的所有数据结构的一个描述符表：
 
 ```c
-typedef void ( ∗ function_t)();
+typedef void (*function_t)();
 typedef struct {
-const char ∗ name ;
-const char ∗ category ;
-function_t init ;
-function_t benchmark ;
-function_t benchmark_control ;
-function_t cleanup ;
-uint64_t iteration_count ;
-}benchmark_ t ;
+const char∗ name;
+const char∗ category;
+function_t init;
+function_t benchmark;
+function_t benchmark_control;
+function_t cleanup;
+uint64_t iteration_count;
+}benchmark_ t;
 ```
 
 ### Measurement
