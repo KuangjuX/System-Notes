@@ -1,5 +1,7 @@
 # HyperBench: A Benchmark Suite for Virtualization Capabilities
 
+Wei S, Zhang K, Tu B. Hyperbench: A benchmark suite for virtualization capabilities[J]. Proceedings of the ACM on Measurement and Analysis of Computing Systems, 2019, 3(2): 1-22.
+
 ## COST MODEL
 
 - $GNR(Guest Native Ratio) = \frac{T_{guest}}{T_{native}}$
@@ -98,3 +100,15 @@ uint64_t iteration_count;
 ![](Hyperbench-A-Benchmark-Suite-for-Virtualization-Capabilities/figure-6.png)
 
 上表展示了运行 benchmarks 的结果，单位是时钟/每次迭代。
+
+根据上表的推论，可以推断出 hypervisior 优化的一个措施是减少虚拟化敏感事件。将硬件虚拟化和软件虚拟化技术合并会破坏 VMM 中退出和其发生次数之间的一一映射关系。另一个例子是半虚拟化 IPI，它使用 Hypercall 向多个 VCPUs 发送 IPI。一批 IPI 仅需要一个VM退出。因此，cost model 中表示 C 和 T 之间关系的未确定运算符是虚拟化程序的重要特征。为了验证测试的虚拟化程序是否具有类似的特征，我们在主机机器和测试的虚拟化程序上使用可变迭代运行 HyperBench。
+
+### Effectiveness
+
+- Idle Benchmark: physical machine 比虚拟化环境表现更好因为 host 直接读取硬件 `counter`。
+
+- Hypercall Benchmark: KVM 和 Xen 在性能上没有表现出显著的差异因为 KVM 和 Xen 都使用相同的硬件机制在 VM 和 hypervisor 之间进行转换。由于接收 VPCU 处于暂停状态，KVM 上的 IPI 成本超过一个硬件 IPI 和一个 Hypercall。KVM 上 IPI 和 Hypercall 的结果证实了这一点。我们还向 KVM 上正在运行的 CPU 发送了一个 IPI。该 IPI 消耗了3375 个时钟周期，这需要一个 Hypercall 和一个硬件 IPI。这表明 KVM x86 启用了“posted-interrupt processing” 功能。然而，Xen 的 IPI 比 KVM 花费更多的周期。在相同的硬件支持下，这是由于虚拟机监控器设置的差异。通过运行 **xl demsg** 命令，我们发现 Xen 未能启用远程中断重映射，并且不会启用 x2APIC。对于 QEMU 而言，IPI是比KVM 和 Xen 更昂贵的操作，这表明 DBT 在处理 IPI 方面表现不佳。
+
+- Memory Benchmark: HyperBench 在揭示平台的内存虚拟化能力方面也表现出色。当KVM和Xen都使用 EPT 时，它们在构建 EPT 条目和 2D 页表遍历方面会遭受一定程度的性能降低。冷内存访问的结果显示了大约 1.4 倍的减速。对于冷内存访问，KVM 和 Xen 的 $T_{memory}$ 处于300个时钟周期的水平。对于 QEMU 来说，虽然从 GPA 到 HPA 的转换都是通过相对较慢的软件 MMU 和硬件 MMU 进行的，但在内存访问过程中没有出现 VM exit。最终结果是 QEMU 比 KVM 和 Xen 稍微具有一些性能优势。热内存访问基准测试显示，x86 KVM 和 x86 Xen 在 TLB 虚拟化方面与主机具有相同的能力。借助EPT，直接从GVA到HPA的映射可以被缓存。在 QEMU 中，只有从主机虚拟地址（等效于GPA）到HPA的映射可以被缓存。对于QEMU的热内存访问，GVA 到 GPA 的转换会错过TLB，而 HVA 到 HPA 的转换可能会击中 TLB。因此，QEMU 上的热内存访问性能仍然很差，但需要的时钟周期比冷内存访问要少。对于大多数为热内存访问的 Set Page Table基准测试，QEMU 的代价比 KVM 和 Xen 高出一个数量级。
+
+- IO Benchmark: I/O 基准测试反映了虚拟平台的 hypervisor 设计对虚拟化能力的影响。在 KVM 和 Xen 中，I/O 设备由 QEMU 在用户空间中模拟。虽然 QEMU 模拟的串行端口的表现优于物理端口，但是 KVM 和 Xen 上的 I/O 基准测试比主机机器上糟糕得多。VM 和 hypervisor 之间的信号机制抵消了 QEMU 的优势，导致了巨大的差异。在 KVM 中，当 HyperBench 内核发起 I/O 请求时，会有两个主要的上下文切换。首先是在同一物理核心上 HyperBench 内核和 KVM 之间的转换。其次，由于 KVM 在内核空间运行，通知在用户空间运行的 QEMU 需要另一个上下文切换。在 Xen 中，由于 HyperBench 内核和 Dom0 在不同的物理核心上运行，因此，Xen 必须从运行 HyperBench 内核的 CPU 向运行 Dom0 的 CPU 发送物理 IPI。告知 QEMU 模拟 I/O 请求的通知路径比 KVM 要长。因此，Xen 在 I/O 基准测试方面比 KVM 慢得多。
