@@ -116,3 +116,115 @@ fn main() {
     c.next()
 }
 ```
+
+## Object Safe
+
+如果一个 trait object 具备如下特征，称其为 Object Safe 的 trait:
+
+- 所有 supertraits 必须是对象安全的
+
+- `Sized` 不能是 supertrait。换句话说，不应该需要 `Self: Sized`
+
+- 禁止有任何关联常数
+
+- 禁止有带范型的关联类型
+
+- 所有关联函数要么可以从 trait object 中派发，要么明确不可派发：
+  
+  - 可派发函数需要：
+    
+    - 没有任何类型参数（尽管允许生命周期参数）
+    
+    - 不使用 `Self` 的方法
+    
+    - 具有以下类型之一：
+      
+      - `&self`
+      
+      - `&mut self`
+      
+      - `Box<Self>`
+      
+      - `Rc<Self>`
+      
+      - `Arc<Self>`
+      
+      - `Pin<P>`，P 是以上几个类型之一
+    
+    - 没有 `where Self: Sized` 绑定
+  
+  - 显式的不可派发函数需要：
+    
+    - 有 `where Self: Sized` 绑定
+
+```rust
+// Examples of object safe methods.
+trait TraitMethods {
+    fn by_ref(self: &Self) {}
+    fn by_ref_mut(self: &mut Self) {}
+    fn by_box(self: Box<Self>) {}
+    fn by_rc(self: Rc<Self>) {}
+    fn by_arc(self: Arc<Self>) {}
+    fn by_pin(self: Pin<&Self>) {}
+    fn with_lifetime<'a>(self: &'a Self) {}
+    fn nested_pin(self: Pin<Arc<Self>>) {}
+}
+
+```
+
+```rust
+// This trait is object-safe, but these methods cannot be dispatched on a trait object.
+trait NonDispatchable {
+    // Non-methods cannot be dispatched.
+    fn foo() where Self: Sized {}
+    // Self type isn't known until runtime.
+    fn returns(&self) -> Self where Self: Sized;
+    // `other` may be a different concrete type of the receiver.
+    fn param(&self, other: Self) where Self: Sized {}
+    // Generics are not compatible with vtables.
+    fn typed<T>(&self, x: T) where Self: Sized {}
+}
+
+struct S;
+impl NonDispatchable for S {
+    fn returns(&self) -> Self where Self: Sized { S }
+}
+let obj: Box<dyn NonDispatchable> = Box::new(S);
+obj.returns(); // ERROR: cannot call with Self return
+obj.param(S);  // ERROR: cannot call with Self parameter
+obj.typed(1);  // ERROR: cannot call with generic type
+
+```
+
+```rust
+// Examples of non-object safe traits.
+trait NotObjectSafe {
+    const CONST: i32 = 1;  // ERROR: cannot have associated const
+
+    fn foo() {}  // ERROR: associated function without Sized
+    fn returns(&self) -> Self; // ERROR: Self in return type
+    fn typed<T>(&self, x: T) {} // ERROR: has generic type parameters
+    fn nested(self: Rc<Box<Self>>) {} // ERROR: nested receiver not yet supported
+}
+
+struct S;
+impl NotObjectSafe for S {
+    fn returns(&self) -> Self { S }
+}
+let obj: Box<dyn NotObjectSafe> = Box::new(S); // ERROR
+
+```
+
+```rust
+// Self: Sized traits are not object-safe.
+trait TraitWithSize where Self: Sized {}
+
+struct S;
+impl TraitWithSize for S {}
+let obj: Box<dyn TraitWithSize> = Box::new(S); // ERROR
+
+```
+
+```rust
+
+```
