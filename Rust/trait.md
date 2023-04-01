@@ -169,7 +169,6 @@ trait TraitMethods {
     fn with_lifetime<'a>(self: &'a Self) {}
     fn nested_pin(self: Pin<Arc<Self>>) {}
 }
-
 ```
 
 ```rust
@@ -193,7 +192,6 @@ let obj: Box<dyn NonDispatchable> = Box::new(S);
 obj.returns(); // ERROR: cannot call with Self return
 obj.param(S);  // ERROR: cannot call with Self parameter
 obj.typed(1);  // ERROR: cannot call with generic type
-
 ```
 
 ```rust
@@ -212,7 +210,6 @@ impl NotObjectSafe for S {
     fn returns(&self) -> Self { S }
 }
 let obj: Box<dyn NotObjectSafe> = Box::new(S); // ERROR
-
 ```
 
 ```rust
@@ -222,7 +219,6 @@ trait TraitWithSize where Self: Sized {}
 struct S;
 impl TraitWithSize for S {}
 let obj: Box<dyn TraitWithSize> = Box::new(S); // ERROR
-
 ```
 
 ```rust

@@ -4,7 +4,6 @@
   
   - [Instruction Level Parallelism](arch/CAAQA/ILP.md)
   - [TLB MMU](arch/TLB%20MMU.md)
-  - [Verilator 使用](arch/verilator.md)
 
 - Courses
   
@@ -59,6 +58,8 @@
   
   - [Docker](tools/Docker.md)
   - [riscv toolchain](tools/riscv-gnu-toolchain.md)
+  - [Visual Studio Code](tools/vscode.md)
+  - [Verilator 使用](tools/verilator.md)
 
 - Virtualization
   
