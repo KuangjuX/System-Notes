@@ -37,6 +37,8 @@
   
   - OS
     
+    - [The Deminkernel Datapath OS Architecture for Microsecond-scale Datacenter Systems](paper-notes/os/Deminikernel.md)
+    
     - [RedLeaf: Isolation and Communication in a Safe Operating System](paper-notes/os/RedLeaf.md)
   
   - Virtualization
