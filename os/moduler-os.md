@@ -81,10 +81,10 @@ Unikraft 可以通过以下两种方式来提升性能：
 - Makefile：根据不同参数进行选择，`FS/NET/GRAPHIC` 是否为 y，如果为 y 的话放在条件编译里面进行编译，见 `cargo.mk`:
 
 ```
-
+features-$(FS) += libax/fs
+features-$(NET) += libax/net
+features-$(GRAPHIC) += libax/display
 ```
-
-
 
 - `_cargo_build`: 首先根据不同的语言，选择不同的编译方法，例如对于 rust，调用 `call cargo_build,--manifest-path $(APP)/Cargo.toml`，其中 `$(APP)` 表示目前要运行的应用程序。
 
