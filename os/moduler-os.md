@@ -20,6 +20,16 @@ Unikernel 是专用的，单地址空间的，使用 library OS 构建出来的�
 
 ## Unikraft
 
+相对于传统操作系统，使用unikernel有以下优势：
+
+1. 更高的性能：unikernel是专门为应用程序设计的，因此它们可以提供比传统操作系统更高的性能。unikernel只包含应用程序所需的最小代码和资源，这使得它们非常高效。
+2. 更快的启动时间：由于unikernel只包含应用程序所需的最小代码和资源，因此它们可以在非常短的时间内启动。这使得它们非常适合需要快速启动时间的场景。
+3. 更少的内存消耗：由于unikernel只包含应用程序所需的最小代码和资源，因此它们需要比传统操作系统更少的内存。这使得它们非常适合在资源受限环境中运行。
+4. 更好的安全性：由于unikernel只包含应用程序所需的最小代码和资源，因此它们具有比传统操作系统更小的攻击面。这使得它们更难受到攻击。
+5. 更容易管理：由于unikernel是专门为应用程序设计的，因此它们通常比传统操作系统更容易管理。这使得它们非常适合在云环境中运行。
+
+### Uniraft 结构
+
 - Library Components
 
 - Configuration
@@ -63,6 +73,14 @@ Unikraft 可以通过以下两种方式来提升性能：
 - 专用化，通过将应用程序适配到更低级 API，以利用性能优势，尤其是对于寻求高性能磁盘 IO 吞吐量的数据库应用程序而言。
 
 ![](moduler-os/unikraft-arch.png)
+
+linux 各模块间依赖关系：
+
+![](moduler-os/linux-dependencies.png)
+
+unikraft Hello World 应用程序中各模块间依赖关系：
+
+![](moduler-os/unikraft-dependencies.png)
 
 ## Arceos
 
@@ -122,6 +140,8 @@ endef
 这也就回到了最上层关于 `_caro_build` 命令的封装，将 `$(APP)/Cargo.toml` 作为顶层模块，引用其他模块，并进行条件编译构建 unikernel
 
 **问题：ArceOS 中模块之间是否会互相引用状态？如何解决？**
+
+例如：`axsync` 引用了 `axtask`，使用了 `axtask` 中的 WaitQueue（xv6 中 SpinLock 对 Process 的引用）。`axruntime` 中也需要引用 `axtask` 的调度器（需要仔细设计不同木块间的依赖关系）。
 
 **思考：如何将 hypocaust-2 拆分成模块化？**
 
