@@ -78,6 +78,14 @@ Unikraft 可以通过以下两种方式来提升性能：
 
 根据 cargo 不同的 feature 来进行条件编译。
 
+- Makefile：根据不同参数进行选择，`FS/NET/GRAPHIC` 是否为 y，如果为 y 的话放在条件编译里面进行编译，见 `cargo.mk`:
+
+```
+
+```
+
+
+
 - `_cargo_build`: 首先根据不同的语言，选择不同的编译方法，例如对于 rust，调用 `call cargo_build,--manifest-path $(APP)/Cargo.toml`，其中 `$(APP)` 表示目前要运行的应用程序。
 
 - 以 `httpserver` 为例，查看 unikernel 如何条件编译，首先在 `httpserver` 中的 `Cargo.toml` 的依赖项为：`libax = { path = "../../../ulib/libax", features = ["paging", "multitask", "net"] }`,这个表明需要编译 `libax` 并且有以上三个 features
@@ -117,4 +125,10 @@ endef
 
 **思考：如何将 hypocaust-2 拆分成模块化？**
 
-kernel/hypervisor 模块复用
+kernel/hypervisor 模块复用：
+
+- hypervisor 可以复用一些内核模块，例如 `axlog`，`axdriver`，`axtask`
+
+- 对于一些模块需要重写，例如 `axruntime`
+
+- 底层 crate 可以复用
