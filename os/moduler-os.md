@@ -74,4 +74,47 @@ Unikraft 可以通过以下两种方式来提升性能：
 
 ![](moduler-os/ArceOS.svg)
 
-通过 `axruntime` 启动 unikernel，根据不同的要求可以加载不同的模块
+**当执行了 `make A=apps/net/httpserver ARCH=aarch64 LOG=info NET=y SMP=1 run` 发生了什么？**
+
+根据 cargo 不同的 feature 来进行条件编译。
+
+- `_cargo_build`: 首先根据不同的语言，选择不同的编译方法，例如对于 rust，调用 `call cargo_build,--manifest-path $(APP)/Cargo.toml`，其中 `$(APP)` 表示目前要运行的应用程序。
+
+- 以 `httpserver` 为例，查看 unikernel 如何条件编译，首先在 `httpserver` 中的 `Cargo.toml` 的依赖项为：`libax = { path = "../../../ulib/libax", features = ["paging", "multitask", "net"] }`,这个表明需要编译 `libax` 并且有以上三个 features
+
+- 查看 `libax`，找到以上三个 features，发现：
+  
+  - `paging = ["axruntime/paging"]`
+  
+  - `multitask = ["axruntime/multitask", "axtask/multitask", "axsync/multitask"]`
+  
+  - `net = ["axruntime/net", "dep:axnet"]`
+  
+  - 这里涉及到 `axruntime` ，`axtask`，`axsync` 等 module，并对这些 module 进行条件编译
+
+- `cargo.mk`：这个文件里描述了如何使用 cargo 进行条件编译的方法，build 参数如下：
+
+```
+build_args := \
+  -Zbuild-std=core,alloc -Zbuild-std-features=compiler-builtins-mem \
+  --config "build.rustflags='-Clink-arg=-T$(LD_SCRIPT)'" \
+  --target $(TARGET) \
+  --target-dir $(CURDIR)/target \
+  --features "$(features-y)" \
+```
+
+`cargo_build`:
+
+```
+define cargo_build
+  cargo build $(build_args) $(1)
+endef
+```
+
+这也就回到了最上层关于 `_caro_build` 命令的封装，将 `$(APP)/Cargo.toml` 作为顶层模块，引用其他模块，并进行条件编译构建 unikernel
+
+**问题：ArceOS 中模块之间是否会互相引用状态？如何解决？**
+
+**思考：如何将 hypocaust-2 拆分成模块化？**
+
+kernel/hypervisor 模块复用
