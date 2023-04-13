@@ -139,6 +139,14 @@ endef
 
 这也就回到了最上层关于 `_caro_build` 命令的封装，将 `$(APP)/Cargo.toml` 作为顶层模块，引用其他模块，并进行条件编译构建 unikernel
 
+**ArceOS 相比 Unikraft 的优势？**
+
+- 使用 Rust 编写，具有现代化包管理（crate），条件编译和引用更简单。
+
+- 可以更为轻松扩展模块，例如 hypervisor 可以和 ArceOS 使用相同模块。
+
+- 原声支持异步，可以在内核重写 tokio runtime 进行调度。
+
 **问题：ArceOS 中模块之间是否会互相引用状态？如何解决？**
 
 例如：`axsync` 引用了 `axtask`，使用了 `axtask` 中的 WaitQueue（xv6 中 SpinLock 对 Process 的引用）。`axruntime` 中也需要引用 `axtask` 的调度器（需要仔细设计不同模块间的依赖关系）。
