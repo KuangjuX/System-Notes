@@ -141,7 +141,7 @@ endef
 
 **问题：ArceOS 中模块之间是否会互相引用状态？如何解决？**
 
-例如：`axsync` 引用了 `axtask`，使用了 `axtask` 中的 WaitQueue（xv6 中 SpinLock 对 Process 的引用）。`axruntime` 中也需要引用 `axtask` 的调度器（需要仔细设计不同木块间的依赖关系）。
+例如：`axsync` 引用了 `axtask`，使用了 `axtask` 中的 WaitQueue（xv6 中 SpinLock 对 Process 的引用）。`axruntime` 中也需要引用 `axtask` 的调度器（需要仔细设计不同模块间的依赖关系）。
 
 **思考：如何将 hypocaust-2 拆分成模块化？**
 
@@ -152,3 +152,7 @@ kernel/hypervisor 模块复用：
 - 对于一些模块需要重写，例如 `axruntime`
 
 - 底层 crate 可以复用
+
+## References
+
+- Kuenzer S, Bădoiu V A, Lefeuvre H, et al. Unikraft: fast, specialized unikernels the easy way[C]//Proceedings of the Sixteenth European Conference on Computer Systems. 2021: 376-394.
