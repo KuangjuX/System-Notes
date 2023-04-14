@@ -92,6 +92,34 @@ unikraft Hello World 应用程序中各模块间依赖关系：
 
 ![](moduler-os/ArceOS.svg)
 
+### Arceos 模块
+
+- crate: 一些与 OS 设计的公共模块，也可以在构建其他内核/hypervisor 中使用
+
+- modules:
+  
+  - 一些对于公共模块的封装：axalloc，axdriver
+  
+  - 一些 OS 设计耦合模块：axtask，axnet
+
+- 必选模块：
+  
+  - axruntime: 启动，初始化，模块总体管控
+  
+  - axhal：硬件抽象层
+  
+  - axlog：打印日志
+
+- 可选模块：
+  
+  - axalloc：动态内存分配
+  
+  - axtask：多任务、线程
+  
+  - axdriver：设备驱动
+  
+  - axnet：网络
+
 **当执行了 `make A=apps/net/httpserver ARCH=aarch64 LOG=info NET=y SMP=1 run` 发生了什么？**
 
 根据 cargo 不同的 feature 来进行条件编译。
@@ -161,6 +189,26 @@ kernel/hypervisor 模块复用：
 
 - 底层 crate 可以复用
 
+目前 hypocaust-2 有以下功能：
+
+- 基于设备树的配置与解析，初始化 hypervisor 和 guest（可选配置方案）
+
+- 内存分配器
+
+- 页表翻译（hypervisor 为了隔离需要多地址空间）
+
+- SBI 接口
+
+- trap 处理
+
+- 中断子系统
+
+- 设备模拟
+
+![](moduler-os/module-hypocaust-2.png)
+
 ## References
 
 - Kuenzer S, Bădoiu V A, Lefeuvre H, et al. Unikraft: fast, specialized unikernels the easy way[C]//Proceedings of the Sixteenth European Conference on Computer Systems. 2021: 376-394.
+
+- arceos: https://github.com/rcore-os/arceos
