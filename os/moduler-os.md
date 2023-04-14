@@ -165,7 +165,63 @@ define cargo_build
 endef
 ```
 
-这也就回到了最上层关于 `_caro_build` 命令的封装，将 `$(APP)/Cargo.toml` 作为顶层模块，引用其他模块，并进行条件编译构建 unikernel
+这也就回到了最上层关于 `_caro_build` 命令的封装，将 `$(APP)/Cargo.toml` 作为顶层模块，引用其他模块，并进行条件编译构建 unikernel。
+
+- 查看 `Makefile` 发现 `make run` 指令需要执行 `build` 和 `justrun`，build 指令在上面梳理完成，`justrun` 需要调用 `run_qemu` 命令，然后跳转到 `qemu.mk` 发现 qemu 构建类似 cargo 构建，不过更加简单一些，如此一来一个单地址空间（不区分内核空间和用户空间）的应用程序就编译完成。
+
+- 运行时首先 Arceos 先进行一些引导启动，例如在 riscv64 的环境中执行：
+
+```rust
+#[naked]
+#[no_mangle]
+#[link_section = ".text.boot"]
+unsafe extern "C" fn _start() -> ! {
+    extern "Rust" {
+        fn rust_main();
+    }
+    // PC = 0x8020_0000
+    // a0 = hartid
+    // a1 = dtb
+    core::arch::asm!("
+        mv      s0, a0                  // save hartid
+        mv      s1, a1                  // save DTB pointer
+        la      sp, {boot_stack}
+        li      t0, {boot_stack_size}
+        add     sp, sp, t0              // setup boot stack
+
+        call    {init_boot_page_table}
+        call    {init_mmu}              // setup boot page table and enabel MMU
+
+        li      s2, {phys_virt_offset}  // fix up virtual high address
+        add     sp, sp, s2
+
+        mv      a0, s0
+        mv      a1, s1
+        la      a2, {platform_init}
+        add     a2, a2, s2
+        jalr    a2                      // call platform_init(hartid, dtb)
+
+        mv      a0, s0
+        mv      a1, s1
+        la      a2, {rust_main}
+        add     a2, a2, s2
+        jalr    a2                      // call rust_main(hartid, dtb)
+        j       .",
+        phys_virt_offset = const PHYS_VIRT_OFFSET,
+        boot_stack_size = const TASK_STACK_SIZE,
+        boot_stack = sym BOOT_STACK,
+        init_boot_page_table = sym init_boot_page_table,
+        init_mmu = sym init_mmu,
+        platform_init = sym super::platform_init,
+        rust_main = sym rust_main,
+        options(noreturn),
+    )
+}
+```
+
+随后跳转到 `axruntime` 中的 `rust_main` 中运行，`rust_main` 经过一系列条件初始化后，执行 `main()`，由于这个 `main` 实在应用程序定义的，应当进行符号连接并跳转（由于是单地址空间，所以不须上下文切换）。
+
+随后开始执行用户程序，用户程序通过 `libax` 的 API 进行执行，应用程序在内核态执行，无需进行 syscall 与上下文切换，效率更高。
 
 **ArceOS 相比 Unikraft 的优势？**
 
@@ -206,6 +262,8 @@ kernel/hypervisor 模块复用：
 - 设备模拟
 
 ![](moduler-os/module-hypocaust-2.png)
+
+可以在基于模块化 hypocaust-2 中运行 Arceos，用于提供安全的执行环境。
 
 ## References
 
