@@ -27,9 +27,16 @@ w_n
 \end{pmatrix}* a + b)
 $$
 
-$\begin{pmatrix}
-w_1\\w_2\\..\\w_n
-\end{pmatrix}$ 是权重矩阵，a 是输入向量，b 是偏置值向量，用来标是神经单元是否被容易激活；$\omega$ 是映射函数，可以用 $Sigmod$  或者 $ReLU$。
+$$
+\begin{pmatrix}
+w_1\\
+w_2\\
+..\\
+w_n
+\end{pmatrix}
+$$
+
+是权重矩阵，a 是输入向量，b 是偏置值向量，用来标是神经单元是否被容易激活；$\omega$ 是映射函数，可以用 $Sigmod$  或者 $ReLU$。
 
 ## 如何进行训练
 
