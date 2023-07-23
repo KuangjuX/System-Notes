@@ -16,8 +16,6 @@ $$
 \omega(w_1a + w_2a + ... w_na + b)
 $$
 
-$$
-
 可以写成：
 
 $$
@@ -28,8 +26,6 @@ w_2\\
 w_n
 \end{pmatrix}
 * a + b)
-$$
-
 $$
 
 $\begin{pmatrix}
