@@ -134,6 +134,26 @@
 
 - 循环直至处理完所有节点，最后设置nnfusion图的输出节点并设置默认参数，完成TensorFlow到nnfusion的图转换。
 
+#### `generate_topology`:
+
+`generate_topology()` 的函数，用于生成 TensorFlow 模型的拓扑结构信息。以下是对这个函数的解析：
+
+1. 首先，获取 TensorFlow 模型中节点的数量 `num_nodes`。
+
+2. 创建一个无序映射 `tensorflow_name2nodeIdx_map`，用于将 TensorFlow 节点的名称映射到其索引。
+
+3. 第一个循环遍历所有节点，将节点的名称和索引存储到 `tensorflow_name2nodeIdx_map` 中，以便在后续步骤中进行查找。
+
+4. 为每个节点计算输入依赖关系。对于每个节点，统计其输入数量，并将每个输入节点的输出指向当前节点。这样，可以建立一个以节点索引为键，输入节点索引数组为值的 `tf_node_outputs_` 数据结构，用于表示每个节点的输出节点索引。
+
+5. 同时，初始化每个节点的待处理计数为其输入数量，并将待处理计数存储在 `tf_pending_counts_` 中。
+
+6. 对于每个节点，如果其待处理计数为 0，表示该节点没有任何输入依赖，将其索引推入 `tf_topology_` 中，以准备后续处理。
+
+7. 最后，遍历所有节点，如果某个节点的输出节点列表为空，说明它是计算图的输出节点，将其名称添加到 `tf_output_name_` 集合中。
+
+总之，`generate_topology()` 函数通过遍历 TensorFlow 模型的节点，并分析其输入依赖关系，生成了模型的拓扑结构信息。这个信息将在模型转换的过程中用于处理节点的顺序以及构建边。
+
 ## 计算图
 
 在 `src/nnfusion/core/graph/graph.hpp` 中定义了 `Graph` 数据结构的成员变量：
@@ -238,7 +258,11 @@ void Graph::add_gnode_and_edge(const std::shared_ptr<GNode> gnode,
 
 - `m_op_ptr`：算子指针
 
-`Op` 数据类型是一个算子基类，`Input` 表示输入数据，`Input` 中分别有两个 field，`m_shape` 和 `m_partial_shape` 分别用于静态图和动态图。`Output` 有一个 `m_tensor` 的 field，是使用 `Tensor` 类型所描述的。`Tensor` 类型定义在 `src/nnfusion/common/descriptor/tensor.hpp` 中，以下是 `Tensor` 的主要成员和功能：
+`Op` 数据类型是一个算子基类，`Input` 表示输入数据，`Input` 中分别有两个 field，`m_shape` 和 `m_partial_shape` 分别用于静态图和动态图。`Output` 有一个 `m_tensor` 的 field，是使用 `Tensor` 类型所描述的。
+
+#### Tensor
+
+`Tensor` 类型定义在 `src/nnfusion/common/descriptor/tensor.hpp` 中，以下是 `Tensor` 的主要成员和功能：
 
 1. 构造函数：构造函数用于创建一个张量描述。它接受以下参数：
    
@@ -276,6 +300,45 @@ void Graph::add_gnode_and_edge(const std::shared_ptr<GNode> gnode,
 3. 静态成员变量：
    
    - `m_next_instance_id`：静态原子变量，用于生成张量实例的唯一标识。
+
+#### TensorLayout
+
+`src/nnfusion/common/descriptor/layout/tensor_layout.hpp` 文件定义了一个名为 `TensorLayout` 的抽象基类，用于描述张量视图的布局信息。张量视图布局描述了如何将张量的多维数据映射到内存中，以支持张量的不同形状和布局。
+
+以下是 `TensorLayout` 类的主要成员和功能：
+
+1. 构造函数：构造函数接受一个 `nnfusion::descriptor::Tensor` 对象，用于初始化布局信息。
+
+2. 成员函数：
+   
+   - `get_size`：获取视图在缓冲区中的大小（字节数）。
+   - `get_allocated_size`：获取已分配内存的大小。
+   - `get_index_offset`：根据给定索引返回对应的偏移量，用于支持切片操作。
+   - `get_element_type`：获取视图中元素的数据类型。
+   - `get_shape`：获取视图的形状。
+   - `get_strides`：获取视图中各个维度的步幅。
+   - `operator==`：判断两个视图布局是否相同。
+
+3. 其他细节：
+   
+   - `TensorLayout` 类为抽象基类，它定义了一个接口，但没有提供具体实现。具体的张量布局实现应该从这个基类派生，并实现纯虚函数。
+
+#### DenseTensorLayout
+
+`src/nnfusion/common/descriptor/layout/dense_tensor_layout.hpp` 文件定义了一个名为 `DenseTensorLayout` 的类，该类表示标准的分块布局，用于支持行主序（row-major）、列主序（column-major）以及它们的排列和切片。
+
+以下是 `DenseTensorLayout` 类的主要成员和功能：
+
+1. 构造函数：构造函数接受一个 `nnfusion::descriptor::Tensor` 对象，并在基类构造函数的基础上初始化布局信息。
+
+2. 成员函数：
+   
+   - `get_offset`：获取偏移量，用于标识张量数据在内存中的起始位置。
+   - `get_index_offset`：根据给定索引返回对应的偏移量，以支持切片操作。
+   - `get_strides`：获取各个维度的步幅，用于计算不同维度之间的距离。
+   - `operator==`：判断两个布局是否相同。
+
+`DenseTensorLayout` 类继承自抽象基类 `TensorLayout`，它表示标准的分块布局，适用于支持常见的张量形状和布局，如行主序和列主序。通过实现不同类型的布局，深度学习框架可以在不同计算设备上优化内存访问，从而提高计算性能。
 
 ## Engine
 
