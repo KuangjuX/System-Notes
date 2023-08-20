@@ -134,6 +134,149 @@
 
 - 循环直至处理完所有节点，最后设置nnfusion图的输出节点并设置默认参数，完成TensorFlow到nnfusion的图转换。
 
+## 计算图
+
+在 `src/nnfusion/core/graph/graph.hpp` 中定义了 `Graph` 数据结构的成员变量：
+
+```cpp
+        private:
+            // Map from node ids to allocated nodes.  nodes_[id] may be nullptr if
+            // the node with that id was removed from the graph.
+            GNodeVector m_nodes;
+
+            //ordered ops from bfs
+            GNodeVector m_bfs_ordered_ops;
+            bool m_bfs_ordered_ops_is_valid = false;
+
+            // Number of nodes alive.
+            size_t m_node_size = 0;
+
+            // Map from edge ids to allocated edges.  m_edges[id] may be nullptr if
+            // the edge with that id was removed from the graph.
+            std::vector<std::shared_ptr<Edge>> m_edges;
+
+            // The number of entries in m_edges that are not nullptr.
+            size_t m_edge_size = 0;
+
+            // Allocated but free nodes and edges.
+            GNodeVector m_free_nodes;
+            std::vector<std::shared_ptr<Edge>> m_free_edges;
+
+            // TODO: Output nodes of this graph
+            GNodeVector m_output_nodes;
+            GNodeVector m_parameters;
+            // For generating unique names.
+            int name_counter_ = 0;
+
+            static std::atomic<size_t> m_next_instance_id;
+            size_t m_instance_id;
+            std::string m_name;
+            const std::string m_unique_name;
+
+            size_t m_temporary_pool_size;
+```
+
+在这个数据结构中有几个重要的成员变量：
+
+- m_nodes: 包含了所有节点
+
+- m_edges: 包含了所有边
+
+- m_free_nodes：用于分配但已经回收了的节点，避免频繁内存分配
+
+- m_output_nodes：图的输出节点
+
+同时，该数据结构也有很多方法，例如向图中添加节点和边：
+
+```cpp
+void Graph::add_gnode_and_edge(const std::shared_ptr<GNode> gnode,
+                               const GNodeIndexVector& input_gnodes)
+{
+    NNFUSION_CHECK(gnode == nullptr) << "GNode can't be nullptr.";
+
+    add_node(gnode);
+
+    for (size_t i = 0; i < input_gnodes.size(); i++)
+    {
+        add_edge(input_gnodes[i].gnode, input_gnodes[i].index, gnode, i);
+    }
+    gnode->get_op_ptr()->revalidate_and_infer_types(gnode->shared_from_this());
+}
+```
+
+接下来看 `src/nnfusion/core/graph/gnode.hpp` 中定义了图中节点：
+
+```cpp
+        protected:
+            int64_t m_id; // m_id is for graph, the index in graph m_nodes
+            size_t m_instance_id;
+            static std::atomic<size_t> m_next_instance_id;
+            std::string m_name;
+            const std::string m_unique_name;
+
+            std::string m_op_type;
+            std::shared_ptr<op::Op> m_op_ptr;
+
+            std::set<std::shared_ptr<Edge>> m_in_edges;
+            std::set<std::shared_ptr<Edge>> m_out_edges;
+
+            std::vector<std::shared_ptr<Input>> m_inputs;
+            std::vector<std::shared_ptr<Output>> m_outputs;
+```
+
+这里需要关注的几个成员变量：
+
+- `m_in_edges`：入边
+
+- `m_out_edges`: 出边
+
+- `m_inputs`: 输入
+
+- `m_outputs`: 输出
+
+- `m_op_type`: 算子类型
+
+- `m_op_ptr`：算子指针
+
+`Op` 数据类型是一个算子基类，`Input` 表示输入数据，`Input` 中分别有两个 field，`m_shape` 和 `m_partial_shape` 分别用于静态图和动态图。`Output` 有一个 `m_tensor` 的 field，是使用 `Tensor` 类型所描述的。`Tensor` 类型定义在 `src/nnfusion/common/descriptor/tensor.hpp` 中，以下是 `Tensor` 的主要成员和功能：
+
+1. 构造函数：构造函数用于创建一个张量描述。它接受以下参数：
+   
+   - `element_type`：表示张量的元素类型，例如 float32、int64 等。
+   - `pshape`：表示张量的部分形状（可能是静态形状或动态形状）。
+   - `name`：表示张量的名称。
+   - `device_type`：表示张量所在的设备类型，例如 CPU、GPU 等。
+   - `is_persistent`：表示张量是否是持久性张量。
+   - `is_constant`：表示张量是否是常量张量。
+   - `is_parameter`：表示张量是否是参数张量。
+   - `is_RDMA_tensor`：表示张量是否是远程内存访问（RDMA）张量。
+   - `group`：表示张量所属的分组。
+   - `device_id`：表示张量所在的设备 ID。
+
+2. 其他成员函数：
+   
+   - `get_name` 和 `set_name`：获取和设置张量的名称。
+   - `get_element_type`：获取张量的元素类型。
+   - `get_shape` 和 `get_partial_shape`：分别获取张量的静态形状和部分形状。
+   - `get_tensor_layout` 和 `set_tensor_layout`：获取和设置张量的布局信息。
+   - `set_pool_offset` 和 `get_pool_offset`：设置和获取张量在内存池中的偏移量。
+   - `set_pool` 和 `get_pool`：设置和获取张量所属的内存池。
+   - `initialized`：检查张量是否已初始化。
+   - `is_same_address`：检查两个张量是否指向相同的内存地址。
+   - `size`：计算张量的大小（元素数量）。
+   - `set_root_tensor` 和 `get_root_tensor`：设置和获取张量的根张量。
+   - `ref` 和 `deref`：增加和减少对张量的引用计数。
+   - `is_persistent`、`is_constant`、`is_parameter`、`is_RDMA_tensor`：判断张量的类型。
+   - `set_group` 和 `get_group`：设置和获取张量的分组信息。
+   - `set_device_type` 和 `get_device_type`：设置和获取张量的设备类型。
+   - `set_device_id` 和 `get_device_id`：设置和获取张量的设备 ID。
+   - `get_device_name`：获取张量所在设备的名称。
+   - `get_unique_name`：获取张量的唯一名称。
+
+3. 静态成员变量：
+   
+   - `m_next_instance_id`：静态原子变量，用于生成张量实例的唯一标识。
+
 ## Engine
 
 观察 `CudaEngine` 发现其是 `Engine` 的子类，`Engine` 有以下几个私有变量：
