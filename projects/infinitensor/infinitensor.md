@@ -124,4 +124,101 @@ Runtime 是用于执行推理的 class，在 `GraphHandler` 中有一个 `run()`
      
      - 如果开启了性能记录，该操作会打印每个操作的类型、执行次数、总执行时间、百分比和平均执行时间等信息。
 
+## Kernel
 
+`Kernel` 是一个抽象基类，主要定义了 `compute` 以及 `tune` 方法，分别被继承类实现，对于不同的硬件分别实现了不同的 `Kernel` 类型的算子的实现。接下来分别举例不同的硬件的 kernel 的实现。
+
+### CPU
+
+**MatMul:**
+
+```cpp
+template <typename T> class NaiveMatmul : public CpuKernelWithoutConfig {
+    void compute(const Operator &_op,
+                 const RuntimeObj *context) const override {
+        auto op = as<MatmulObj>(_op);
+        IT_ASSERT(op->getInputs().size() == 2, "Bias is not supported yet.");
+        T *A = op->getInputs(0)->getRawDataPtr<T *>();
+        T *B = op->getInputs(1)->getRawDataPtr<T *>();
+        T *C = op->getOutput()->getRawDataPtr<T *>();
+        IT_ASSERT(op->getTransA() == false && op->getTransB() == false);
+        IT_ASSERT(op->getAct() == ActType::None);
+        const int M = op->getM(), N = op->getN(), K = op->getK();
+        for (int i = 0; i < M; i++) {
+            for (int j = 0; j < N; j++) {
+                C[i * N + j] = 0;
+                for (int k = 0; k < K; k++) {
+                    C[i * N + j] += A[i * K + k] * B[k * N + j];
+                }
+            }
+        }
+    }
+};
+```
+
+
+
+### Nvidia GPU
+
+**MatMul:**
+
+```cpp
+    bool do_compute(const Operator &_op, const PerfRecord &_record,
+                    const RuntimeObj *_context) const {
+        auto op = as<MatmulObj>(_op);
+        auto context = dynamic_cast<const CudaRuntimeObj *>(_context);
+        void *const inAData = (op->getInputs(0)->getRawDataPtr<void *>());
+        void *const inBData = (op->getInputs(1)->getRawDataPtr<void *>());
+        void *const outData = (op->getOutput()->getRawDataPtr<void *>());
+        auto record = as<MatmulCublasPerfRecordObj>(_record);
+
+        const auto [b, m, n, k] = op->getBMNK();
+        auto opA =
+            op->getTransA() ? CUBLAS_OP_T : CUBLAS_OP_N; // BLAS_N = col major
+        auto opB = op->getTransB() ? CUBLAS_OP_T : CUBLAS_OP_N;
+        const int lda = op->getTransA() ? m : k, ldb = op->getTransB() ? k : n,
+                  ldc = n;
+        const float alpha = 1.f, beta = 0.f;
+        // TODO:use compute type
+        cublasStatus_t stat;
+        if (b > 1) {
+            // Support batch broadcast with zero stride
+            int dimA = op->getInputs(0)->getRank();
+            int dimB = op->getInputs(1)->getRank();
+            long long strideA =
+                (dimA == 2 ||
+                 (dimA == 3 && op->getInputs(0)->getDims()[0] == 1))
+                    ? 0 // Broadcast the batch dimension if batch size is 1
+                    : m * k;
+            long long strideB =
+                (dimB == 2 ||
+                 (dimB == 3 && op->getInputs(1)->getDims()[0] == 1))
+                    ? 0 // Broadcast the batch dimension if batch size is 1
+                    : n * k;
+            stat = cublasGemmStridedBatchedEx(
+                context->cublasHandle(), opB, opA, n, m, k, &alpha, inBData,
+                CUDA_R_32F, ldb, strideB, inAData, CUDA_R_32F, lda, strideA,
+                &beta, outData, CUDA_R_32F, ldc, m * n, b, CUDA_R_32F,
+                (cublasGemmAlgo_t)record->algo);
+        } else {
+            stat = cublasGemmEx(
+                context->cublasHandle(), opB, opA, n, m, k, &alpha, inBData,
+                CUDA_R_32F, ldb, inAData, CUDA_R_32F, lda, &beta, outData,
+                CUDA_R_32F, ldc, CUDA_R_32F, (cublasGemmAlgo_t)record->algo);
+        }
+        // if (stat != CUBLAS_STATUS_SUCCESS)
+        //     cout << cublasGetErrorString(stat);
+        return (stat == CUBLAS_STATUS_SUCCESS);
+    }
+    
+```
+
+在 Nvidia GPU 的矩阵乘法实现时调用了 CUBLAS 库进行实现。
+
+### 寒武纪
+
+**MatMul:**
+
+```cpp
+
+```
