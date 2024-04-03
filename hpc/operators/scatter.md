@@ -5,7 +5,7 @@ ScatterND 有三个输入， `data` rank r >= 1，`indices` rank q >= 1，`updat
 
 `indices` 是一个整数 tensor，其中 k = indices.shape[-1]（就是最后一个纬度的大小）。`indices` 可以被视为一个 k-tuple q-1 维的 tensor，其中每个 k-tuple 是对数据的部分索引。因此 k 的值最多等于 data 的 rank（也就是 data 的维数）。当 k 等于 data 的 rank 的时候，每个 `update` 条目对张量的指定单个元素进行更新。当 k 的值小于 data 的 rank 时，每个 `update` 条目指定对张量的一个切片进行更新。其中索引值允许为负数，按照从末尾开始倒数。
 
-`updates` 被看成是一个 q-1 dim 的 replace-slice-values tensor。因此，updates.shape 的前 q-1 dim 必须和 indices 的前 q-1 dim 相匹配。`updates` 的剩余维度对应于替换切片值的维度。买个替换切片值都是一个 (r-k) 维，因此 `updates` 的形状必须等于 indices.shape[0:q-1] ++ data.shape[k:r-1]。
+`updates` 被看成是一个 q-1 dim 的 replace-slice-values tensor。因此，updates.shape 的前 q-1 dim 必须和 indices 的前 q-1 dim 相匹配。`updates` 的剩余维度对应于替换切片值的维度。每个替换切片值都是一个 (r-k) 维，因此 `updates` 的形状必须等于 indices.shape[0:q-1] + data.shape[k:r-1]（+ 表示维度的连接）。
 
 输出通过如下方式计算：
 
