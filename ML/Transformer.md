@@ -33,3 +33,7 @@ Value Matrix 参数量很大，将其化为两个矩阵相乘（Low Rank 低秩�
 ### Multi-Head Attention
 
 每个 Attention 都有不同 Q, K, V。多头 Attention 可以使模型学习到根据上下文来改变语义的多种方式。
+
+## 一些比较好的文章
+
+- [Transformer 详解](https://wmathor.com/index.php/archives/1438/)
