@@ -37,3 +37,7 @@ thread 3:  3, 7, b
 ```
 
 在第二个方法中线程的访问是连续的。
+
+## References
+
+- [In CUDA, what is memory coalescing, and how is it achieved?](https://stackoverflow.com/questions/5041328/in-cuda-what-is-memory-coalescing-and-how-is-it-achieved)
